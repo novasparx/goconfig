@@ -1,8 +1,10 @@
-package goconfig
+package goconf
 
 import (
-	"io/fs"
+	"errors"
+	"fmt"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -25,94 +27,153 @@ func New() *Config {
 		return strings.Replace(strings.ToLower(s), "_", ".", -1)
 	})
 
-	pn := filepath.Base(os.Args[0])
-	cn := pn + ".yml"
+	if path, ok := findConfigPath(); ok {
+		log.Printf("Config file found in %s", path)
+		err := k.Load(file.Provider(path), yaml.Parser())
 
-	switch pn {
-	case "main":
-		cn = "config.yml"
-	case "__debug_bin":
-		//dlv debug session
-		_, fn, _, ok := runtime.Caller(1)
-
-		if !ok {
-			log.Fatalf("error loading config")
+		if err != nil {
+			log.Fatalf("Error loading config: %v", err)
 		}
 
-		fnb := filepath.Base(fn)
+		err = k.Load(envp, nil)
 
-		if fnb == "main.go" {
-			cn = "config.yml"
-			break
+		if err != nil {
+			log.Fatalf("Error loading config: %v", err)
 		}
 
-		s := strings.TrimSuffix(fnb, filepath.Ext(fn))
-		cn = s + ".yml"
-	}
-
-	wd := filepath.Dir(os.Args[0])
-	err := k.Load(file.Provider(wd+"/config/"+cn), yaml.Parser())
-
-	if err == nil {
-		log.Printf("Config file found in %s", wd+"/config/"+cn)
-		k.Load(envp, nil)
 		return &Config{k}
 	}
 
-	switch err.(type) {
-	case *fs.PathError:
-	default:
-		log.Fatalf("error loading config: %v", err)
-	}
-
-	_, fn, _, ok := runtime.Caller(0)
-
-	if !ok {
-		log.Fatalf("error loading config: %v", err)
-	}
-
-	wd = filepath.Dir(fn)
-
-	err = k.Load(file.Provider(wd+"/config/"+cn), yaml.Parser())
-
-	if err == nil {
-		log.Printf("Config file found in %s", wd+"/config/"+cn)
-		k.Load(envp, nil)
-		return &Config{k}
-	}
-
-	switch err.(type) {
-	case *fs.PathError:
-	default:
-		log.Fatalf("error loading config: %v", err)
-	}
-
-	wd, err = os.Getwd()
-
-	if !ok {
-		log.Fatalf("error loading config: %v", err)
-	}
-
-	err = k.Load(file.Provider(wd+"/config/"+cn), yaml.Parser())
-
-	if err == nil {
-		log.Printf("Config file found in %s", wd+"/config/"+cn)
-		k.Load(envp, nil)
-		return &Config{k}
-	}
-
-	switch err.(type) {
-	case *fs.PathError:
-		log.Println("No config file found. Loading configuration from ENV variables only")
-	default:
-		log.Fatalf("error loading config: %v", err)
-	}
-
-	err = k.Load(envp, nil)
+	log.Println("No config file found. Loading configuration from ENV variables only")
+	err := k.Load(envp, nil)
 
 	if err != nil {
-		log.Fatalf("error loading config: %v", err)
+		log.Fatalf("Error loading config: %v", err)
 	}
 
 	return &Config{k}
+}
+
+func findConfigPath() (string, bool) {
+	execp, err := filepath.Abs(os.Args[0])
+
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	path := execp + ".yml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = execp + ".yaml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = filepath.Dir(execp) + "/config.yml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = filepath.Dir(execp) + "/config.yaml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	mfpath, err := findMainExecPath()
+
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	mnoext := strings.TrimSuffix(mfpath, filepath.Ext(mfpath))
+
+	path = mnoext + ".yml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = mnoext + ".yaml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = filepath.Dir(mnoext) + "/config.yml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = filepath.Dir(mnoext) + "/config.yaml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	base := filepath.Base(mnoext)
+	wd, err := os.Getwd()
+
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	path = wd + "/" + base + ".yml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = wd + "/" + base + ".yaml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = wd + "/config.yml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	path = wd + "/config.yaml"
+	if fileExists(path) {
+		return path, true
+	}
+
+	return "", false
+}
+
+func fileExists(fn string) bool {
+	if _, err := os.Stat(fn); err == nil {
+		return true
+	} else if errors.Is(err, os.ErrNotExist) {
+		return false
+	} else {
+		log.Printf("Error checking file %s: %v", fn, err)
+		return false
+	}
+}
+
+func findMainExecPath() (string, error) {
+	var i int
+	for i = 0; i < math.MaxInt; i++ {
+		_, _, _, ok := runtime.Caller(i)
+
+		if !ok {
+			break
+		}
+	}
+
+	pcs := make([]uintptr, i)
+	runtime.Callers(1, pcs)
+
+	cfs := runtime.CallersFrames(pcs)
+
+	c := true
+	var f runtime.Frame
+	for c {
+		f, c = cfs.Next()
+
+		if f.Function == "main.main" {
+			return f.File, nil
+		}
+	}
+
+	return "", fmt.Errorf("Could not find main.main function execution directory to locate config file")
 }
