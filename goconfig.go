@@ -33,7 +33,7 @@ func New() *Config {
 		cn = "config.yml"
 	case "__debug_bin":
 		//dlv debug session
-		_, fn, _, ok := runtime.Caller(0)
+		_, fn, _, ok := runtime.Caller(1)
 
 		if !ok {
 			log.Fatalf("error loading config")
