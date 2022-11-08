@@ -1,0 +1,8 @@
+.DS_Store
+
+*.exe
+*.so
+
+*.test
+
+# For files related to specific development environments (e.g. IDE), use global .gitignore.
