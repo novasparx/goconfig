@@ -1,4 +1,4 @@
-package goconf
+package goconfig
 
 import (
 	"errors"
