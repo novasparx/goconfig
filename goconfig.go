@@ -55,7 +55,7 @@ func (c *Config) load() {
 		return
 	}
 
-	log.Println("No config file found. Loading configuration from ENV variables only")
+	log.Println("No config file found in default locations. Loading configuration from ENV variables only")
 	err := c.Koanf.Load(envp, nil)
 
 	if err != nil {
