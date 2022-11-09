@@ -22,36 +22,45 @@ type Config struct {
 
 func New() *Config {
 	k := koanf.New(".")
+	return &Config{k}
+}
 
+func LoadDefault() *Config {
+	c := New()
+	c.load()
+	return c
+}
+
+//TODO: Have a Load from file with path (and no fatal or panic but returning error) and reuse it in LoadDefault instead of load()
+
+func (c *Config) load() {
 	envp := env.Provider("", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(s), "_", ".", -1)
 	})
 
 	if path, ok := findConfigPath(); ok {
 		log.Printf("Config file found in %s", path)
-		err := k.Load(file.Provider(path), yaml.Parser())
+		err := c.Koanf.Load(file.Provider(path), yaml.Parser())
 
 		if err != nil {
 			log.Fatalf("Error loading config: %v", err)
 		}
 
-		err = k.Load(envp, nil)
+		err = c.Koanf.Load(envp, nil)
 
 		if err != nil {
 			log.Fatalf("Error loading config: %v", err)
 		}
 
-		return &Config{k}
+		return
 	}
 
-	log.Println("No config file found. Loading configuration from ENV variables only")
-	err := k.Load(envp, nil)
+	log.Println("No config file found in default locations. Loading configuration from ENV variables only")
+	err := c.Koanf.Load(envp, nil)
 
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}
-
-	return &Config{k}
 }
 
 func findConfigPath() (string, bool) {
