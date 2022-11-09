@@ -31,7 +31,7 @@ func LoadDefault() *Config {
 	return c
 }
 
-//TODO: Have a Load from file with path and reuse it in LoadDefault instead of load()
+//TODO: Have a Load from file with path (and no fatal or panic but returning error) and reuse it in LoadDefault instead of load()
 
 func (c *Config) load() {
 	envp := env.Provider("", ".", func(s string) string {
