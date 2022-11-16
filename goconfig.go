@@ -3,6 +3,7 @@ package goconfig
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -185,4 +186,60 @@ func findMainExecPath() (string, error) {
 	}
 
 	return "", fmt.Errorf("Could not find main.main function execution directory to locate config file")
+}
+
+type MountedVolumesProvider struct {
+	paths []string
+}
+
+func Provider(paths ...string) *MountedVolumesProvider {
+	ps := make([]string, 0)
+	for _, p := range paths {
+		ps = append(ps, filepath.Clean(p))
+	}
+	return &MountedVolumesProvider{paths: ps}
+}
+
+func (p *MountedVolumesProvider) ReadBytes() ([]byte, error) {
+	return nil, errors.New("mounted volume provider does not support this method")
+}
+
+func (p *MountedVolumesProvider) Read() (map[string]interface{}, error) {
+	conf := make(map[string]interface{})
+	for _, p := range p.paths {
+		fs, _ := ioutil.ReadDir(p)
+
+		for _, f := range fs {
+			b, err := ioutil.ReadFile(p + "/" + f.Name())
+
+			if err != nil {
+				return nil, err
+			}
+
+			ks := strings.Split(f.Name(), "-")
+			unflatten(ks, string(b), conf)
+		}
+	}
+
+	return conf, nil
+}
+
+func unflatten(ks []string, v interface{}, m map[string]interface{}) {
+	if len(ks) == 0 {
+		return
+	}
+
+	if len(ks) == 1 {
+		if _, ok := m[ks[0]]; !ok {
+			m[ks[0]] = v
+			return
+		}
+	}
+
+	if sub, ok := m[ks[0]]; ok {
+		unflatten(ks[1:], v, sub.(map[string]interface{}))
+	} else {
+		m[ks[0]] = make(map[string]interface{})
+		unflatten(ks[1:], v, m[ks[0]].(map[string]interface{}))
+	}
 }
