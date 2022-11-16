@@ -14,6 +14,8 @@ import (
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 )
 
 type Config struct {
@@ -185,4 +187,15 @@ func findMainExecPath() (string, error) {
 	}
 
 	return "", fmt.Errorf("Could not find main.main function execution directory to locate config file")
+}
+
+type SecretStore struct{}
+
+//TODO: Implement this later!
+func getAzSecrets() {
+	_, err := azidentity.NewEnvironmentCredential(nil)
+
+	if err == nil {
+
+	}
 }
