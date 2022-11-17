@@ -45,32 +45,24 @@ func (c *Config) load() {
 		}
 	}
 
+	if path, ok := findConfigPath(); ok {
+		log.Printf("Loading configuration from config file found in %s", path)
+		err := c.Koanf.Load(file.Provider(path), yaml.Parser())
+
+		if err != nil {
+			log.Fatalf("Error loading config file: %v", err)
+		}
+	}
+
 	envp := env.Provider("", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(s), "_", ".", -1)
 	})
 
-	if path, ok := findConfigPath(); ok {
-		log.Printf("Config file found in %s", path)
-		err := c.Koanf.Load(file.Provider(path), yaml.Parser())
-
-		if err != nil {
-			log.Fatalf("Error loading config: %v", err)
-		}
-
-		err = c.Koanf.Load(envp, nil)
-
-		if err != nil {
-			log.Fatalf("Error loading config: %v", err)
-		}
-
-		return
-	}
-
-	log.Println("No config file found in default locations. Loading configuration from ENV variables and secrets only")
+	log.Println("Loading configuration from ENV variables")
 	err := c.Koanf.Load(envp, nil)
 
 	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
+		log.Fatalf("Error loading configuration from ENV variables: %v", err)
 	}
 }
 
