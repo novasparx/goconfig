@@ -38,7 +38,11 @@ func (c *Config) load() {
 	if spaths, ok := getSecretsStoresPath(); ok {
 		log.Println("Loading secrets")
 		secp := Provider(spaths...)
-		c.Koanf.Load(secp, nil)
+		err := c.Koanf.Load(secp, nil)
+
+		if err != nil {
+			log.Fatal("Error loading secrets\n")
+		}
 	}
 
 	envp := env.Provider("", ".", func(s string) string {
