@@ -35,8 +35,7 @@ func LoadDefault() *Config {
 //TODO: Have a Load from file with path (and no fatal or panic but returning error) and reuse it in LoadDefault instead of load()
 
 func (c *Config) load() {
-	spaths := getSecretsStoresPath()
-	if spaths != nil && len(spaths) != 0 {
+	if spaths, ok := getSecretsStoresPath(); ok {
 		log.Println("Loading secrets")
 		secp := Provider(spaths...)
 		c.Koanf.Load(secp, nil)
@@ -195,8 +194,14 @@ func findMainExecPath() (string, error) {
 	return "", fmt.Errorf("Could not find main.main function execution directory to locate config file")
 }
 
-func getSecretsStoresPath() []string {
-	secretDirs, err := ioutil.ReadDir("/mnt/secrets-store")
+func getSecretsStoresPath() ([]string, bool) {
+	defaultLoc := "/mnt/secrets-store"
+
+	if !fileExists(defaultLoc) {
+		return nil, false
+	}
+
+	secretDirs, err := ioutil.ReadDir(defaultLoc)
 
 	if err != nil {
 		log.Fatal("Could not get config secrets store directory\n")
@@ -204,11 +209,11 @@ func getSecretsStoresPath() []string {
 
 	var paths []string
 	for _, d := range secretDirs {
-		dp, _ := filepath.Abs("/mnt/secrets-store/" + d.Name())
+		dp, _ := filepath.Abs(defaultLoc + "/" + d.Name())
 		paths = append(paths, dp)
 	}
 
-	return paths
+	return paths, true
 }
 
 type MountedVolumesProvider struct {
