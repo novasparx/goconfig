@@ -267,6 +267,11 @@ func (p *MountedVolumesProvider) Read() (map[string]interface{}, error) {
 			b, err := ioutil.ReadFile(p + "/" + f.Name())
 
 			if err != nil {
+				if _, ok := err.(*os.PathError); ok {
+					log.Println("Unsupported file type or subdirectory for secret. Skipping.")
+					continue
+				}
+
 				return nil, err
 			}
 
