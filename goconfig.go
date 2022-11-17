@@ -241,6 +241,24 @@ func (p *MountedVolumesProvider) ReadBytes() ([]byte, error) {
 func (p *MountedVolumesProvider) Read() (map[string]interface{}, error) {
 	conf := make(map[string]interface{})
 	for _, p := range p.paths {
+		fi, err := os.Stat(p)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if !fi.IsDir() {
+			b, err := ioutil.ReadFile(p)
+
+			if err != nil {
+				return nil, err
+			}
+
+			ks := strings.Split(fi.Name(), "-")
+			unflatten(ks, string(b), conf)
+			continue
+		}
+
 		fs, _ := ioutil.ReadDir(p)
 
 		for _, f := range fs {
