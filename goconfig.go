@@ -201,16 +201,22 @@ func getSecretsStoresPath() ([]string, bool) {
 		return nil, false
 	}
 
-	secretDirs, err := ioutil.ReadDir(defaultLoc)
+	sfis, err := ioutil.ReadDir(defaultLoc)
 
 	if err != nil {
 		log.Fatal("Could not get config secrets store directory\n")
 	}
 
 	var paths []string
-	for _, d := range secretDirs {
-		dp, _ := filepath.Abs(defaultLoc + "/" + d.Name())
-		paths = append(paths, dp)
+	for _, d := range sfis {
+		p, _ := filepath.Abs(defaultLoc + "/" + d.Name())
+
+		if err != nil {
+			log.Println("A secret store path could not be generated")
+			continue
+		}
+
+		paths = append(paths, p)
 	}
 
 	return paths, true
