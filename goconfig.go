@@ -266,6 +266,11 @@ func (p *MountedVolumesProvider) Read() (map[string]interface{}, error) {
 		fs, _ := ioutil.ReadDir(p)
 
 		for _, f := range fs {
+			if f.IsDir() {
+				log.Println("More than one level of secrets store subdirectories not supported. Skipping.")
+				continue
+			}
+
 			b, err := ioutil.ReadFile(p + "/" + f.Name())
 
 			if err != nil {
