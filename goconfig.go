@@ -199,6 +199,7 @@ func findMainExecPath() (string, error) {
 }
 
 func getSecretsStoresPath() ([]string, bool) {
+	//TODO: Allow different paths than default location and move this
 	defaultLoc := "/mnt/secrets-store"
 
 	if !fileExists(defaultLoc) {
