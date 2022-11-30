@@ -32,9 +32,28 @@ func LoadDefault() *Config {
 	return c
 }
 
+func LoadDefaultWithGlobalFile() *Config {
+	c := New()
+	c.loadWithGlobal()
+	return c
+}
+
 //TODO: Have a Load from file with path (and no fatal or panic but returning error) and reuse it in LoadDefault instead of load()
 
 func (c *Config) load() {
+	c.loadSecrets()
+	c.loadConfigFile()
+	c.loadEnv()
+}
+
+func (c *Config) loadWithGlobal() {
+	c.loadSecrets()
+	c.loadGlobalConfigFile()
+	c.loadConfigFile()
+	c.loadEnv()
+}
+
+func (c *Config) loadSecrets() {
 	if spaths, ok := getSecretsStoresPath(); ok {
 		log.Println("Loading secrets")
 		secp := Provider(spaths...)
@@ -44,7 +63,38 @@ func (c *Config) load() {
 			log.Fatal("Error loading secrets\n")
 		}
 	}
+}
 
+func (c *Config) loadGlobalConfigFile() {
+	path, ok := os.LookupEnv("GOCONFIG_GLOBAL_FILE")
+
+	if !ok {
+		uhd, err := os.UserHomeDir()
+
+		if err != nil {
+			log.Fatalf("Error loading global config file: %v", err)
+		}
+
+		path = uhd + "/config.yaml"
+
+		if !fileExists(path) {
+			path = uhd + "/config.yml"
+
+			if !fileExists(path) {
+				return
+			}
+		}
+	}
+
+	log.Printf("Loading configuration from global config file found in %s", path)
+	err := c.Koanf.Load(file.Provider(path), yaml.Parser())
+
+	if err != nil {
+		log.Fatalf("Error loading config file: %v", err)
+	}
+}
+
+func (c *Config) loadConfigFile() {
 	if path, ok := findConfigPath(); ok {
 		log.Printf("Loading configuration from config file found in %s", path)
 		err := c.Koanf.Load(file.Provider(path), yaml.Parser())
@@ -53,7 +103,9 @@ func (c *Config) load() {
 			log.Fatalf("Error loading config file: %v", err)
 		}
 	}
+}
 
+func (c *Config) loadEnv() {
 	envp := env.Provider("", ".", func(s string) string {
 		return strings.Replace(strings.ToLower(s), "_", ".", -1)
 	})
