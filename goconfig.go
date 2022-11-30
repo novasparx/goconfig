@@ -106,8 +106,16 @@ func (c *Config) loadConfigFile() {
 }
 
 func (c *Config) loadEnv() {
-	envp := env.Provider("", ".", func(s string) string {
-		return strings.Replace(strings.ToLower(s), "_", ".", -1)
+	envp := env.ProviderWithValue("", ".", func(s, v string) (string, interface{}) {
+		k := strings.Replace(strings.ToLower(s), "_", ".", -1)
+
+		if strings.Contains(v, ",") {
+			return k, strings.FieldsFunc(v, func(r rune) bool {
+				return r == ','
+			})
+		}
+
+		return k, v
 	})
 
 	log.Println("Loading configuration from ENV variables")
