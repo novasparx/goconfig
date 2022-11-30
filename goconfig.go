@@ -234,7 +234,7 @@ func findMainExecPath() (string, error) {
 	for c {
 		f, c = cfs.Next()
 
-		if f.Function == "main.main" {
+		if f.Function == "main.main" || strings.Contains(f.Function, "main.init") {
 			return f.File, nil
 		}
 	}
