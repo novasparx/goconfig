@@ -66,7 +66,32 @@ func (c *Config) loadSecrets() {
 }
 
 func (c *Config) loadGlobalConfigFile() {
-	//TODO Please implement me :)
+	path, ok := os.LookupEnv("GOCONFIG_GLOBAL_FILE")
+
+	if !ok {
+		uhd, err := os.UserHomeDir()
+
+		if err != nil {
+			log.Fatalf("Error loading global config file: %v", err)
+		}
+
+		path = uhd + "/config.yaml"
+
+		if !fileExists(path) {
+			path = uhd + "/config.yml"
+
+			if !fileExists(path) {
+				return
+			}
+		}
+	}
+
+	log.Printf("Loading configuration from global config file found in %s", path)
+	err := c.Koanf.Load(file.Provider(path), yaml.Parser())
+
+	if err != nil {
+		log.Fatalf("Error loading config file: %v", err)
+	}
 }
 
 func (c *Config) loadConfigFile() {
